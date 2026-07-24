@@ -29,6 +29,14 @@ mkdir -p "$APP_DIR/Contents/Resources"
 
 cp "$BUILD_DIR/$APP_NAME" "$APP_DIR/Contents/MacOS/$APP_NAME"
 
+# App icon (generate with: swift scripts/make-icon.swift)
+ICON_SRC="$ROOT/Resources/AppIcon.icns"
+HAS_ICON=false
+if [[ -f "$ICON_SRC" ]]; then
+    cp "$ICON_SRC" "$APP_DIR/Contents/Resources/AppIcon.icns"
+    HAS_ICON=true
+fi
+
 # Read the marketing version from VERSION if present, else default.
 VERSION="$(cat "$ROOT/VERSION" 2>/dev/null || echo "1.0.0")"
 
@@ -45,6 +53,8 @@ cat > "$APP_DIR/Contents/Info.plist" <<PLIST
     <string>$BUNDLE_ID</string>
     <key>CFBundleExecutable</key>
     <string>$APP_NAME</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>

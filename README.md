@@ -48,18 +48,53 @@ tokens, and does not count against any limit — so the widget refreshes for fre
 - Logged into Claude Code (so the token is in your Keychain)
 - Swift toolchain to build (Xcode or Command Line Tools: `xcode-select --install`)
 
-## Build, run & install
+## Install
+
+### Option A — download the app (no toolchain needed)
+
+1. Download `ClaudeUsageBar-x.y.z.zip` from the [Releases](../../releases) page and unzip it.
+2. This app is **open-source and not notarized** (no paid Apple Developer
+   certificate — see [Why it's unsigned](#why-its-unsigned)). macOS quarantines
+   downloaded unsigned apps, so clear the quarantine flag once:
+   ```sh
+   xattr -dr com.apple.quarantine ~/Downloads/ClaudeUsageBar.app
+   ```
+   *(Or, without the terminal: right-click the app → **Open** → **Open** in the
+   dialog. You only do this once.)*
+3. Move it to Applications and launch it:
+   ```sh
+   mv ~/Downloads/ClaudeUsageBar.app /Applications/
+   open /Applications/ClaudeUsageBar.app
+   ```
+4. The first time it reads your usage, macOS shows a **Keychain prompt**
+   (*"…wants to use information stored in Claude Code-credentials"*). Click
+   **Always Allow**. It never asks again.
+
+**Verify your download** (optional): each release lists a SHA-256. Check it with
+`shasum -a 256 ClaudeUsageBar-x.y.z.zip`.
+
+### Option B — build from source
 
 ```sh
+git clone <this repo> && cd claude-usage-bar
+swift scripts/make-icon.swift           # generate the app icon (once)
 scripts/build-app.sh                    # build dist/ClaudeUsageBar.app
 cp -R dist/ClaudeUsageBar.app /Applications/
 open /Applications/ClaudeUsageBar.app
 scripts/install-login-item.sh           # optional: launch at login
 ```
 
-The first time it reads your token, macOS shows a **Keychain prompt** — click
-**Always Allow** and it never asks again (as long as you don't rebuild the app;
-the ad-hoc signature changes on each build).
+Building it yourself is the most trustworthy path — you run exactly the source
+you can read here.
+
+### Why it's unsigned
+
+Distributing a *notarized* Mac app requires a paid Apple Developer membership.
+This project skips that on purpose and ships the source plus a downloadable
+build instead, so the one-time quarantine step above is the trade-off. Because
+the ad-hoc signature changes on every rebuild, the Keychain "Always Allow" grant
+is tied to a specific build — reinstalling a new build re-prompts once. A stable
+installed copy in `/Applications` that you don't rebuild only ever asks once.
 
 ## The CLI
 
@@ -103,11 +138,29 @@ swift test
 > Line Tools, the app and CLI build fine but the test target won't run locally —
 > CI (GitHub's macOS runners) has Xcode and runs them.
 
-## Privacy
+## Privacy & security
 
-Everything stays on your Mac. The only network call is to Anthropic's own usage
-endpoint, authenticated with your existing Claude Code token. No third parties,
-no telemetry.
+Your data stays on your machine. Specifically:
+
+- **One network destination, and it's Anthropic's own.** The app's only outbound
+  request is a GET to `https://api.anthropic.com/api/oauth/usage` — the same
+  server Claude Code already talks to — to read *your* usage numbers. The host is
+  verified before every request; the client will not contact any other host.
+- **No third parties.** No analytics, no telemetry, no crash reporting, no ad or
+  tracking SDKs, no "phone home." The app has zero dependencies beyond Apple's
+  own frameworks.
+- **Your token never leaves your Mac except to Anthropic.** It's read from the
+  macOS Keychain per request, sent only to the verified Anthropic host, and is
+  never written to disk or logs. HTTP redirects are refused, so the credential
+  can't be replayed to another host.
+- **Nothing is persisted.** The network layer uses an ephemeral session (no disk
+  cache, no cookies). The app stores no files, no history, no config.
+- **The `--tokens` CLI mode is fully offline** — it only reads your local
+  `~/.claude` transcripts and makes no network calls at all.
+
+In short: the widget reads your own usage from Anthropic with your own
+credentials, and does nothing else. The source here is the whole story — audit
+`Sources/ClaudeUsageKit/Limits/` to confirm it.
 
 ## License
 
