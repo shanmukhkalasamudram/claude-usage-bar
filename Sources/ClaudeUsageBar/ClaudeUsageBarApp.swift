@@ -8,9 +8,13 @@ struct ClaudeUsageBarApp: App {
     var body: some Scene {
         MenuBarExtra {
             UsagePopoverView(model: model)
-                .onAppear { model.start() }
         } label: {
+            // The label is instantiated as soon as the menu bar item appears at
+            // launch (unlike the popover content, which is created only on first
+            // click), so starting the refresh loop here means the percentage is
+            // populated from launch — including login-item autostart.
             MenuBarLabel(model: model)
+                .task { model.start() }
         }
         .menuBarExtraStyle(.window)
     }

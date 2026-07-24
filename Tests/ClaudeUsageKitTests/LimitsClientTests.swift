@@ -19,6 +19,14 @@ final class LimitsClientTests: XCTestCase {
         XCTAssertEqual(limits.session.fraction, 0.45, accuracy: 1e-9)
     }
 
+    func testDecodeRejectsBooleanUtilization() {
+        // A JSON boolean bridges to NSNumber; it must not be read as 0/1.
+        let bad = Data(#"{ "five_hour": { "utilization": true, "resets_at": "2026-07-24T00:00:00Z" }, "seven_day": { "utilization": 5, "resets_at": "2026-07-27T00:00:00Z" } }"#.utf8)
+        XCTAssertThrowsError(try LimitsClient.decode(bad, now: Date())) { error in
+            XCTAssertEqual(error as? LimitsClient.LimitsError, .malformed)
+        }
+    }
+
     func testDecodeMissingRequiredWindowThrows() {
         let bad = Data(#"{ "seven_day": { "utilization": 1, "resets_at": "2026-07-27T00:00:00Z" } }"#.utf8)
         XCTAssertThrowsError(try LimitsClient.decode(bad, now: Date())) { error in

@@ -174,9 +174,13 @@ private struct MeterBar: View {
         GeometryReader { geo in
             ZStack(alignment: .leading) {
                 Capsule().fill(Color.primary.opacity(0.10))
-                Capsule()
-                    .fill(color.gradient)
-                    .frame(width: max(8, geo.size.width * fraction))
+                if fraction > 0.001 {
+                    Capsule()
+                        .fill(color.gradient)
+                        // Keep a tiny minimum so a sub-pixel value is still
+                        // visible, but show nothing at a true 0%.
+                        .frame(width: max(6, geo.size.width * fraction))
+                }
             }
         }
         .frame(height: 9)

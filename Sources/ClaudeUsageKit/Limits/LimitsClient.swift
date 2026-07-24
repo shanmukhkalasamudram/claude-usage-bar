@@ -21,6 +21,8 @@ public struct LimitsClient: Sendable {
         case untrustedHost
         /// Token was rejected (likely expired — use Claude Code to refresh it).
         case unauthorized
+        /// The request could not reach Anthropic (offline, DNS, timeout).
+        case network
         /// Non-200 HTTP status.
         case http(Int)
         /// The response could not be decoded into limits.
@@ -79,9 +81,11 @@ public struct LimitsClient: Sendable {
         let response: URLResponse
         do {
             (data, response) = try await session.data(for: request)
+        } catch is CancellationError {
+            throw CancellationError()
         } catch {
             // Surface a connection failure without leaking the token or request.
-            throw LimitsError.http(-1)
+            throw LimitsError.network
         }
 
         guard let http = response as? HTTPURLResponse else { throw LimitsError.malformed }
@@ -116,13 +120,22 @@ public struct LimitsClient: Sendable {
     private static func window(_ value: Any?) -> LimitWindow? {
         guard
             let dict = value as? [String: Any],
-            let utilization = (dict["utilization"] as? NSNumber)?.doubleValue,
+            let utilization = number(dict["utilization"]),
             let resetString = dict["resets_at"] as? String,
             let resetsAt = parseDate(resetString)
         else {
             return nil
         }
         return LimitWindow(utilization: utilization, resetsAt: resetsAt)
+    }
+
+    /// Coerce a JSON value to a `Double`, rejecting JSON booleans (which also
+    /// bridge to `NSNumber`, so `true` would otherwise become `1.0`).
+    private static func number(_ value: Any?) -> Double? {
+        guard let n = value as? NSNumber, CFGetTypeID(n) != CFBooleanGetTypeID() else {
+            return nil
+        }
+        return n.doubleValue
     }
 
     // Reset timestamps look like "2026-07-24T06:59:59.252451+00:00".

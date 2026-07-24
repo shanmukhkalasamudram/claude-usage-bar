@@ -30,10 +30,16 @@ final class LimitsViewModel: ObservableObject {
     func start() {
         guard refreshTask == nil else { return }
         refreshTask = Task { [weak self] in
-            guard let self else { return }
             while !Task.isCancelled {
-                await self.refresh()
-                try? await Task.sleep(for: .seconds(self.refreshInterval))
+                // Hold `self` only for the fetch, then release it before the
+                // sleep so the view model isn't retained for the whole interval.
+                let interval: TimeInterval
+                do {
+                    guard let self else { return }
+                    await self.refresh()
+                    interval = self.refreshInterval
+                }
+                try? await Task.sleep(for: .seconds(interval))
             }
         }
     }
@@ -65,12 +71,14 @@ final class LimitsViewModel: ObservableObject {
             return "No Claude login found. Sign in with Claude Code, then reopen."
         case LimitsClient.LimitsError.unauthorized:
             return "Login expired. Run any Claude Code command to refresh it."
+        case LimitsClient.LimitsError.network:
+            return "Couldn't reach Anthropic. Check your connection."
         case LimitsClient.LimitsError.http(let code):
             return "Anthropic returned HTTP \(code). Try again shortly."
         case LimitsClient.LimitsError.malformed:
             return "Couldn't read the usage response."
         default:
-            return "Couldn't reach Anthropic. Check your connection."
+            return "Something went wrong. Try again shortly."
         }
     }
 }
