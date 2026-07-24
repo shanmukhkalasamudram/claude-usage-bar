@@ -34,12 +34,18 @@ final class LimitsClientTests: XCTestCase {
         }
     }
 
+    /// Reference box so the `@Sendable` token provider can record a call
+    /// without capturing a mutable local (illegal under Swift 6 concurrency).
+    private final class CallFlag: @unchecked Sendable {
+        var wasCalled = false
+    }
+
     func testFetchRefusesNonAnthropicHostBeforeAnyNetwork() async {
         // A non-approved host must be rejected without a token read or a request.
-        var tokenWasRead = false
+        let flag = CallFlag()
         let client = LimitsClient(
             endpoint: URL(string: "https://evil.example.com/api/oauth/usage")!,
-            tokenProvider: { tokenWasRead = true; return "secret" }
+            tokenProvider: { flag.wasCalled = true; return "secret" }
         )
         do {
             _ = try await client.fetch()
@@ -47,7 +53,7 @@ final class LimitsClientTests: XCTestCase {
         } catch {
             XCTAssertEqual(error as? LimitsClient.LimitsError, .untrustedHost)
         }
-        XCTAssertFalse(tokenWasRead, "token must not be read for an untrusted host")
+        XCTAssertFalse(flag.wasCalled, "token must not be read for an untrusted host")
     }
 
     func testFetchWithoutTokenThrowsNoTokenAndMakesNoRequest() async {

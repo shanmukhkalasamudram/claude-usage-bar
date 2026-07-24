@@ -4,6 +4,10 @@ A tiny native macOS **menu bar app** that shows your Claude subscription limits
 at a glance — how much of your current **5-hour session** and **weekly** limit
 you've used, and when each resets — without opening anything.
 
+> **Unofficial.** This is an independent, community-built tool. It is not
+> affiliated with, endorsed by, or supported by Anthropic. "Claude" is a
+> trademark of Anthropic.
+
 ```
   ⛽ 45%          ← lives in your menu bar
 
