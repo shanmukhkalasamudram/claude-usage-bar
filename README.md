@@ -61,10 +61,16 @@ tokens, and does not count against any limit — so the widget refreshes for fre
    certificate — see [Why it's unsigned](#why-its-unsigned)). macOS quarantines
    downloaded unsigned apps, so clear the quarantine flag once:
    ```sh
-   xattr -dr com.apple.quarantine ~/Downloads/ClaudeUsageBar.app
+   /usr/bin/xattr -dr com.apple.quarantine ~/Downloads/ClaudeUsageBar.app
    ```
-   *(Or, without the terminal: right-click the app → **Open** → **Open** in the
-   dialog. You only do this once.)*
+   The full path `/usr/bin/xattr` is intentional: it invokes Apple's `xattr`,
+   which supports the `-r` (recursive) flag. If you're in a Conda/Python
+   environment, a different `xattr` may shadow it on your `PATH` and fail with
+   `option -r not recognized` — the full path avoids that.
+
+   *(Prefer no terminal? Right-click the app → **Open** → **Open** in the
+   dialog. If macOS still blocks it, go to **System Settings → Privacy &
+   Security**, scroll down, and click **Open Anyway**. You only do this once.)*
 3. Move it to Applications and launch it:
    ```sh
    mv ~/Downloads/ClaudeUsageBar.app /Applications/
