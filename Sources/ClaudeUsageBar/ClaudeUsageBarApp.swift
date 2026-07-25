@@ -24,6 +24,12 @@ struct ClaudeUsageBarApp: App {
 /// menu bar. (Also enforced via `LSUIElement` in the bundled Info.plist.)
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Root-cause fix for the 429 storm: if another copy is already running,
+        // this elects a single survivor and exits every duplicate BEFORE any of
+        // them can start polling oauth/usage. Must be the first statement so no
+        // networking or AppKit setup is ever kicked off in a losing process.
+        SingleInstanceGuard.enforce()
+
         NSApp.setActivationPolicy(.accessory)
     }
 }

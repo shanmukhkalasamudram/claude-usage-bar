@@ -19,11 +19,20 @@ public struct LimitsClient: Sendable {
         case noToken
         /// The configured endpoint is not an approved Anthropic host.
         case untrustedHost
-        /// Token was rejected (likely expired — use Claude Code to refresh it).
+        /// Token was rejected as expired/invalid (HTTP 401) — Claude Code
+        /// refreshes it on next use.
         case unauthorized
+        /// The token is valid but not allowed to read usage limits (HTTP 403) —
+        /// e.g. no active Claude subscription on this account.
+        case forbidden
         /// The request could not reach Anthropic (offline, DNS, timeout).
         case network
-        /// Non-200 HTTP status.
+        /// Rate limited by Anthropic (HTTP 429). `retryAfter` is the number of
+        /// seconds the server asked us to wait, parsed from the `Retry-After`
+        /// header per RFC 7231 (delta-seconds or IMF-fixdate HTTP-date), or nil
+        /// if the header is absent or unparseable.
+        case rateLimited(retryAfter: TimeInterval?)
+        /// Non-200 HTTP status (other than the ones handled explicitly).
         case http(Int)
         /// The response could not be decoded into limits.
         case malformed
@@ -91,7 +100,12 @@ public struct LimitsClient: Sendable {
         guard let http = response as? HTTPURLResponse else { throw LimitsError.malformed }
         switch http.statusCode {
         case 200: break
-        case 401, 403: throw LimitsError.unauthorized
+        case 401: throw LimitsError.unauthorized
+        case 403: throw LimitsError.forbidden
+        case 429:
+            let retryAfter = http.value(forHTTPHeaderField: "Retry-After")
+                .flatMap { Self.parseRetryAfter($0, now: now) }
+            throw LimitsError.rateLimited(retryAfter: retryAfter)
         default: throw LimitsError.http(http.statusCode)
         }
 
@@ -152,6 +166,33 @@ public struct LimitsClient: Sendable {
 
     static func parseDate(_ raw: String) -> Date? {
         fractional.date(from: raw) ?? plain.date(from: raw)
+    }
+
+    // RFC 7231 §7.1.3 Retry-After is either delta-seconds (a non-negative
+    // integer) or an HTTP-date. HTTP-date is sent as IMF-fixdate, e.g.
+    // "Sun, 06 Nov 1994 08:49:37 GMT". Parse with a fixed POSIX/GMT formatter so
+    // the device locale, 12/24h setting, or time zone can never skew it.
+    private static let imfFixdate: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.timeZone = TimeZone(identifier: "GMT")
+        f.dateFormat = "EEE, dd MMM yyyy HH:mm:ss 'GMT'"
+        return f
+    }()
+
+    /// Parse a `Retry-After` header value into a non-negative wait in seconds,
+    /// relative to `now`. Returns nil if the value is malformed.
+    static func parseRetryAfter(_ raw: String, now: Date) -> TimeInterval? {
+        let trimmed = raw.trimmingCharacters(in: .whitespaces)
+        // delta-seconds form: a bare non-negative integer count of seconds.
+        if let seconds = Int(trimmed), seconds >= 0 {
+            return TimeInterval(seconds)
+        }
+        // HTTP-date (IMF-fixdate) form: seconds from now until that instant.
+        if let date = imfFixdate.date(from: trimmed) {
+            return max(0, date.timeIntervalSince(now))
+        }
+        return nil
     }
 }
 

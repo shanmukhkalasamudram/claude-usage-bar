@@ -71,4 +71,21 @@ final class LimitsClientTests: XCTestCase {
         XCTAssertNotNil(LimitsClient.parseDate("2026-07-27T11:59:59Z"))
         XCTAssertNil(LimitsClient.parseDate("nope"))
     }
+
+    func testParseRetryAfterDeltaSeconds() {
+        let now = Date()
+        XCTAssertEqual(LimitsClient.parseRetryAfter("120", now: now), 120)
+        XCTAssertEqual(LimitsClient.parseRetryAfter("  0 ", now: now), 0)
+        XCTAssertNil(LimitsClient.parseRetryAfter("-5", now: now))   // negative is invalid
+        XCTAssertNil(LimitsClient.parseRetryAfter("soon", now: now)) // garbage
+    }
+
+    func testParseRetryAfterHTTPDate() {
+        // IMF-fixdate 60 seconds after this fixed instant.
+        let now = Date(timeIntervalSince1970: 784_111_777) // 1994-11-06T08:49:37Z
+        let seconds = LimitsClient.parseRetryAfter("Sun, 06 Nov 1994 08:50:37 GMT", now: now)
+        XCTAssertEqual(seconds ?? -1, 60, accuracy: 1)
+        // A date in the past clamps to zero, never negative.
+        XCTAssertEqual(LimitsClient.parseRetryAfter("Sun, 06 Nov 1994 08:00:00 GMT", now: now), 0)
+    }
 }

@@ -19,7 +19,7 @@ struct UsagePopoverView: View {
                 if let opus = limits.weekOpus {
                     LimitCard(title: "This week · Opus", subtitle: "7-day limit", window: opus, prominent: false)
                 }
-            } else if let error = model.errorMessage {
+            } else if model.showsErrorTakeover, let error = model.errorMessage {
                 errorView(error)
             } else {
                 loadingView
@@ -46,15 +46,36 @@ struct UsagePopoverView: View {
                 )
             VStack(alignment: .leading, spacing: 1) {
                 Text("Claude Usage").font(.headline)
-                if let refreshed = model.lastRefreshed {
-                    Text("Updated \(Formatting.clock(refreshed))")
-                        .font(.caption2).foregroundStyle(.secondary)
-                }
+                subline
             }
             Spacer()
             if model.isRefreshing {
                 ProgressView().controlSize(.small)
             }
+        }
+    }
+
+    /// The subtitle line under "Claude Usage". Normally the last-updated time;
+    /// when the numbers are stale (a refresh failed but we still have prior
+    /// data) it becomes a muted warning that keeps the last-good time visible,
+    /// so the user knows how old the numbers are without a full error takeover.
+    @ViewBuilder private var subline: some View {
+        if model.isStale {
+            HStack(spacing: 4) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                if let error = model.errorMessage {
+                    Text(error)
+                }
+                if let refreshed = model.lastRefreshed {
+                    Text("· from \(Formatting.clock(refreshed))")
+                        .foregroundStyle(.tertiary)
+                }
+            }
+            .font(.caption2)
+            .foregroundStyle(.secondary)
+        } else if let refreshed = model.lastRefreshed {
+            Text("Updated \(Formatting.clock(refreshed))")
+                .font(.caption2).foregroundStyle(.secondary)
         }
     }
 
