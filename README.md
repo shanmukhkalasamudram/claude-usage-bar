@@ -8,23 +8,11 @@ you've used, and when each resets — without opening anything.
 > affiliated with, endorsed by, or supported by Anthropic. "Claude" is a
 > trademark of Anthropic.
 
-```
-  ⛽ 45%          ← lives in your menu bar
+<p align="center">
+  <img src="docs/screenshot.png" alt="Claude Usage Bar — the popover showing session and weekly limits" width="340">
+</p>
 
-  ┌──────────────────────────────────┐
-  │ ▮ Claude Usage   Updated 11:04 PM │
-  │ ┌──────────────────────────────┐  │
-  │ │ Current session         45%  │  │
-  │ │ 5-hour limit                 │  │
-  │ │ ▰▰▰▰▰▱▱▱▱▱▱▱▱▱▱▱▱▱          │  │
-  │ │ 🕐 Resets in 2h 14m · 6:59AM │  │
-  │ └──────────────────────────────┘  │
-  │ ┌──────────────────────────────┐  │
-  │ │ This week               25%  │  │
-  │ │ ▰▰▰▱▱▱▱▱▱▱  Resets 2d 22h    │  │
-  │ └──────────────────────────────┘  │
-  └──────────────────────────────────┘
-```
+<p align="center"><sub>It lives in your menu bar as a small gauge + percentage; click it for the panel above.</sub></p>
 
 ## How it works
 
