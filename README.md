@@ -9,10 +9,14 @@ you've used, and when each resets — without opening anything.
 > trademark of Anthropic.
 
 <p align="center">
-  <img src="docs/screenshot.png" alt="Claude Usage Bar — the popover showing session and weekly limits" width="340">
+  <img src="docs/menubar.png" alt="Claude Usage Bar in the macOS menu bar" width="520">
 </p>
+<p align="center"><sub>At a glance in your menu bar — a gauge and your current session percentage.</sub></p>
 
-<p align="center"><sub>It lives in your menu bar as a small gauge + percentage; click it for the panel above.</sub></p>
+<p align="center">
+  <img src="docs/screenshot.png" alt="The popover showing session, weekly, and Opus limits" width="330">
+</p>
+<p align="center"><sub>Click it for the full panel: session, weekly, and Opus limits, each with a live reset countdown.</sub></p>
 
 ## How it works
 

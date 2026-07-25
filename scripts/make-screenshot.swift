@@ -160,22 +160,66 @@ struct Canvas: View {
     }
 }
 
+/// A slice of the macOS menu bar showing how the widget appears at a glance:
+/// our gauge + percentage (highlighted) among a few system items.
+struct MenuBar: View {
+    var body: some View {
+        ZStack {
+            LinearGradient(
+                colors: [Color(red: 0.30, green: 0.46, blue: 0.63), Color(red: 0.34, green: 0.51, blue: 0.69)],
+                startPoint: .leading, endPoint: .trailing
+            )
+            HStack(spacing: 15) {
+                Spacer()
+                // The widget — subtly highlighted so the eye lands on it.
+                HStack(spacing: 5) {
+                    Image(systemName: "gauge.with.dots.needle.bottom.0percent")
+                    Text("30%")
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(Capsule().fill(.white.opacity(0.16)))
+
+                // A few neighboring system items for context.
+                Group {
+                    Image(systemName: "play.circle")
+                    Image(systemName: "wifi")
+                    Image(systemName: "battery.100percent")
+                    Image(systemName: "magnifyingglass")
+                    Image(systemName: "switch.2")
+                }
+                .opacity(0.92)
+
+                Text("Fri Jul 24  9:49 PM")
+            }
+            .font(.system(size: 14, weight: .medium))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 16)
+        }
+        .frame(width: 560, height: 40)
+        .environment(\.colorScheme, .dark)
+    }
+}
+
 // MARK: - Render
 
-let image: NSImage? = MainActor.assumeIsolated {
-    let renderer = ImageRenderer(content: Canvas(now: Date()))
+@MainActor
+func writePNG<V: View>(_ view: V, to path: String) {
+    let renderer = ImageRenderer(content: view)
     renderer.scale = 2 // retina
-    return renderer.nsImage
+    guard let image = renderer.nsImage,
+          let tiff = image.tiffRepresentation,
+          let rep = NSBitmapImageRep(data: tiff),
+          let png = rep.representation(using: .png, properties: [:]) else {
+        FileHandle.standardError.write(Data("failed to render \(path)\n".utf8))
+        exit(1)
+    }
+    try? png.write(to: URL(fileURLWithPath: path))
+    print("Wrote \(path) (\(rep.pixelsWide)×\(rep.pixelsHigh))")
 }
 
-guard let image,
-      let tiff = image.tiffRepresentation,
-      let rep = NSBitmapImageRep(data: tiff),
-      let png = rep.representation(using: .png, properties: [:]) else {
-    FileHandle.standardError.write(Data("failed to render screenshot\n".utf8))
-    exit(1)
+MainActor.assumeIsolated {
+    try? FileManager.default.createDirectory(atPath: "docs", withIntermediateDirectories: true)
+    writePNG(Canvas(now: Date()), to: "docs/screenshot.png")
+    writePNG(MenuBar(), to: "docs/menubar.png")
 }
-
-try? FileManager.default.createDirectory(atPath: "docs", withIntermediateDirectories: true)
-try png.write(to: URL(fileURLWithPath: "docs/screenshot.png"))
-print("Wrote docs/screenshot.png (\(rep.pixelsWide)×\(rep.pixelsHigh))")
