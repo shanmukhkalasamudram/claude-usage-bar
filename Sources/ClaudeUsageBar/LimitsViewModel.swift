@@ -115,6 +115,7 @@ final class LimitsViewModel: ObservableObject {
                     delay = Self.jittered(backoff)
                 }
 
+                DiagnosticLog.log("next poll in \(Int(delay))s")
                 try? await Task.sleep(for: .seconds(delay))
             }
         }
@@ -148,6 +149,7 @@ final class LimitsViewModel: ObservableObject {
             self.limits = limits
             self.errorMessage = nil
             self.lastRefreshed = limits.fetchedAt
+            DiagnosticLog.log("fetch OK — session \(Int(limits.session.utilization))% week \(Int(limits.week.utilization))%")
             return .success
         } catch is CancellationError {
             // Explicit Swift cancellation — not a real failure. Leave state as-is.
@@ -161,8 +163,25 @@ final class LimitsViewModel: ObservableObject {
             // don't poison the UI. Otherwise record the failure but keep the
             // last-known limits + timestamp so the popover shows stale data.
             if Task.isCancelled { return .skipped }
+            DiagnosticLog.log("fetch FAIL — \(Self.logDescription(for: error))")
             self.errorMessage = Self.message(for: error)
             return Self.outcome(for: error)
+        }
+    }
+
+    /// A short, credential-free description of a fetch failure for the log.
+    private static func logDescription(for error: Error) -> String {
+        switch error {
+        case LimitsClient.LimitsError.rateLimited(let retryAfter):
+            return "429 rate-limited (retry-after=\(retryAfter.map { "\(Int($0))s" } ?? "none"))"
+        case LimitsClient.LimitsError.unauthorized: return "401 unauthorized"
+        case LimitsClient.LimitsError.forbidden: return "403 forbidden"
+        case LimitsClient.LimitsError.network: return "network error"
+        case LimitsClient.LimitsError.http(let code): return "HTTP \(code)"
+        case LimitsClient.LimitsError.noToken: return "no token in keychain"
+        case LimitsClient.LimitsError.untrustedHost: return "untrusted host"
+        case LimitsClient.LimitsError.malformed: return "malformed response"
+        default: return "unknown error"
         }
     }
 

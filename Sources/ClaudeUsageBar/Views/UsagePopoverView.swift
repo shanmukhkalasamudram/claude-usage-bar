@@ -117,6 +117,15 @@ struct UsagePopoverView: View {
             }
             .buttonStyle(.borderless)
 
+            Button {
+                NSWorkspace.shared.activateFileViewerSelecting([DiagnosticLog.fileURL])
+            } label: {
+                Label("Log", systemImage: "doc.text.magnifyingglass")
+                    .font(.caption)
+            }
+            .buttonStyle(.borderless)
+            .help("Reveal the diagnostics log in Finder")
+
             Spacer()
 
             Button("Quit") {

@@ -1,4 +1,5 @@
 import AppKit
+import ClaudeUsageKit
 
 /// Ensures only one ClaudeUsageBar process runs at a time.
 ///
@@ -41,8 +42,14 @@ enum SingleInstanceGuard {
         )
         pids.insert(myPID)
 
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
+        DiagnosticLog.log("launch v\(version) pid=\(myPID) liveInstances=\(pids.count) pids=\(pids.sorted())")
+
         // We're the only live copy — nothing to do.
-        guard pids.count > 1 else { return }
+        guard pids.count > 1 else {
+            DiagnosticLog.log("single instance — running")
+            return
+        }
 
         // Deterministic, OBSERVER-INDEPENDENT total order: the lowest pid wins.
         //
@@ -60,6 +67,7 @@ enum SingleInstanceGuard {
         // exits the freshly-launched duplicate — the intended UX.
         let survivorPID = pids.min()!  // safe: count > 1
         if myPID != survivorPID {
+            DiagnosticLog.log("duplicate instance — exiting (survivor pid=\(survivorPID))")
             // We lost. Exit immediately — we're still inside didFinishLaunching,
             // so the menu bar item hasn't painted and the refresh loop (started
             // by MenuBarLabel's .task) hasn't run. No Keychain handle is held,
@@ -68,5 +76,6 @@ enum SingleInstanceGuard {
             exit(0)
         }
         // else: we are the survivor — fall through and run normally.
+        DiagnosticLog.log("surviving instance — running (collapsed \(pids.count) copies)")
     }
 }
